@@ -61,6 +61,7 @@ export const SECRET_KEYS = {
     AIMLAPI: 'api_key_aimlapi',
     FALAI: 'api_key_falai',
     XAI: 'api_key_xai',
+    COMETAPI: 'cometapi_api_key',
     VERTEXAI_SERVICE_ACCOUNT: 'vertexai_service_account_json',
 };
 
@@ -106,6 +107,7 @@ const FRIENDLY_NAMES = {
     [SECRET_KEYS.FALAI]: 'FAL.AI',
     [SECRET_KEYS.AZURE_TTS]: 'Azure TTS',
     [SECRET_KEYS.AIMLAPI]: 'AI/ML API',
+    [SECRET_KEYS.COMETAPI]: 'CometAPI',
     [SECRET_KEYS.DEEPL]: 'DeepL',
     [SECRET_KEYS.LIBRE]: 'LibreTranslate',
     [SECRET_KEYS.LIBRE_URL]: 'LibreTranslate Endpoint (e.g. http://127.0.0.1:5000/translate)',
@@ -146,6 +148,7 @@ const INPUT_MAP = {
     [SECRET_KEYS.DEEPSEEK]: '#api_key_deepseek',
     [SECRET_KEYS.AIMLAPI]: '#api_key_aimlapi',
     [SECRET_KEYS.XAI]: '#api_key_xai',
+    [SECRET_KEYS.COMETAPI]: '#cometapi_api_key',
     [SECRET_KEYS.VERTEXAI_SERVICE_ACCOUNT]: '#vertexai_service_account_json',
 };
 

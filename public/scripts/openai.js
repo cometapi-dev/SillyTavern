@@ -88,6 +88,9 @@ export {
     IdentifierNotFoundError,
     Message,
     MessageCollection,
+    initCometAPI,
+    getCometAPIModelName,
+    isCometAPIConfigured,
 };
 
 let openai_messages_count = 0;
@@ -121,7 +124,6 @@ const max_4k = 4095;
 const max_8k = 8191;
 const max_16k = 16383;
 const max_32k = 32767;
-const max_64k = 65535;
 const max_128k = 128 * 1000;
 const max_200k = 200 * 1000;
 const max_256k = 256 * 1000;
@@ -184,6 +186,7 @@ export const chat_completion_sources = {
     AIMLAPI: 'aimlapi',
     XAI: 'xai',
     POLLINATIONS: 'pollinations',
+    COMETAPI: 'cometapi',
 };
 
 const character_names_behavior = {
@@ -370,6 +373,7 @@ const default_settings = {
     aimlapi_model: 'gpt-4o-mini-2024-07-18',
     xai_model: 'grok-3-beta',
     pollinations_model: 'openai',
+    cometapi_model: '',
     custom_model: '',
     custom_url: '',
     custom_include_body: '',
@@ -414,6 +418,11 @@ const default_settings = {
     extensions: {},
 };
 
+// CometAPI settings object - REMOVED! Use secret_state like other APIs
+// const cometapi_settings = (() => {
+//     ... removed completely
+// })();
+
 const oai_settings = {
     preset_settings_openai: 'Default',
     temp_openai: 1.0,
@@ -457,6 +466,7 @@ const oai_settings = {
     aimlapi_model: 'gpt-4-turbo',
     xai_model: 'grok-3-beta',
     pollinations_model: 'openai',
+    cometapi_model: '',
     custom_model: '',
     custom_url: '',
     custom_include_body: '',
@@ -1619,6 +1629,8 @@ export function getChatCompletionModel(source = null) {
             return oai_settings.xai_model;
         case chat_completion_sources.POLLINATIONS:
             return oai_settings.pollinations_model;
+        case chat_completion_sources.COMETAPI:
+            return oai_settings.cometapi_model;
         default:
             console.error(`Unknown chat completion source: ${activeSource}`);
             return '';
@@ -1887,6 +1899,27 @@ function saveModelList(data) {
         }
 
         $('#model_groq_select').val(oai_settings.groq_model).trigger('change');
+    }
+
+    if (oai_settings.chat_completion_source === chat_completion_sources.COMETAPI) {
+        $('#cometapi_model').empty();
+        $('#cometapi_model').append('<option value="">Select Model</option>');
+
+        model_list.forEach((model) => {
+            $('#cometapi_model').append(
+                $('<option>', {
+                    value: model.id,
+                    text: model.id,
+                }));
+        });
+
+        const selectedModel = model_list.find(model => model.id === oai_settings.cometapi_model);
+        if (model_list.length > 0 && (!selectedModel || !oai_settings.cometapi_model)) {
+            oai_settings.cometapi_model = model_list[0].id;
+            saveSettingsDebounced();
+        }
+
+        $('#cometapi_model').val(oai_settings.cometapi_model).trigger('change');
     }
 }
 
@@ -2413,6 +2446,8 @@ export function getStreamingReply(data, state, { chatCompletionSource = null, ov
                 data.choices?.filter(x => x?.delta?.reasoning)?.[0]?.delta?.reasoning ??
                 '';
         }
+        return data.choices?.[0]?.delta?.content ?? data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '';
+    } else if (chat_completion_source === chat_completion_sources.COMETAPI) {
         return data.choices?.[0]?.delta?.content ?? data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '';
     } else {
         return data.choices?.[0]?.delta?.content ?? data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '';
@@ -3312,7 +3347,7 @@ export class ChatCompletion {
     }
 }
 
-function loadOpenAISettings(data, settings) {
+async function loadOpenAISettings(data, settings) {
     openai_setting_names = data.openai_setting_names;
     openai_settings = data.openai_settings;
     openai_settings.forEach(function (item, i, arr) {
@@ -3368,6 +3403,7 @@ function loadOpenAISettings(data, settings) {
     oai_settings.zerooneai_model = settings.zerooneai_model ?? default_settings.zerooneai_model;
     oai_settings.xai_model = settings.xai_model ?? default_settings.xai_model;
     oai_settings.pollinations_model = settings.pollinations_model ?? default_settings.pollinations_model;
+    oai_settings.cometapi_model = settings.cometapi_model ?? default_settings.cometapi_model;
     oai_settings.custom_model = settings.custom_model ?? default_settings.custom_model;
     oai_settings.custom_url = settings.custom_url ?? default_settings.custom_url;
     oai_settings.custom_include_body = settings.custom_include_body ?? default_settings.custom_include_body;
@@ -3381,18 +3417,25 @@ function loadOpenAISettings(data, settings) {
     oai_settings.proxy_password = settings.proxy_password ?? default_settings.proxy_password;
     oai_settings.assistant_prefill = settings.assistant_prefill ?? default_settings.assistant_prefill;
     oai_settings.assistant_impersonation = settings.assistant_impersonation ?? default_settings.assistant_impersonation;
+    oai_settings.claude_use_sysprompt = settings.claude_use_sysprompt ?? default_settings.claude_use_sysprompt;
+    oai_settings.use_makersuite_sysprompt = settings.use_makersuite_sysprompt ?? default_settings.use_makersuite_sysprompt;
+    oai_settings.vertexai_auth_mode = settings.vertexai_auth_mode ?? default_settings.vertexai_auth_mode;
+    oai_settings.vertexai_region = settings.vertexai_region ?? default_settings.vertexai_region;
+    oai_settings.vertexai_express_project_id = settings.vertexai_express_project_id ?? default_settings.vertexai_express_project_id;
+    oai_settings.squash_system_messages = settings.squash_system_messages ?? default_settings.squash_system_messages;
     oai_settings.image_inlining = settings.image_inlining ?? default_settings.image_inlining;
     oai_settings.inline_image_quality = settings.inline_image_quality ?? default_settings.inline_image_quality;
     oai_settings.video_inlining = settings.video_inlining ?? default_settings.video_inlining;
     oai_settings.bypass_status_check = settings.bypass_status_check ?? default_settings.bypass_status_check;
-    oai_settings.vertexai_express_project_id = settings.vertexai_express_project_id ?? default_settings.vertexai_express_project_id;
+    oai_settings.continue_prefill = settings.continue_prefill ?? default_settings.continue_prefill;
+    oai_settings.continue_postfix = settings.continue_postfix ?? default_settings.continue_postfix;
+    oai_settings.function_calling = settings.function_calling ?? default_settings.function_calling;
     oai_settings.show_thoughts = settings.show_thoughts ?? default_settings.show_thoughts;
     oai_settings.reasoning_effort = settings.reasoning_effort ?? default_settings.reasoning_effort;
     oai_settings.enable_web_search = settings.enable_web_search ?? default_settings.enable_web_search;
     oai_settings.request_images = settings.request_images ?? default_settings.request_images;
     oai_settings.seed = settings.seed ?? default_settings.seed;
     oai_settings.n = settings.n ?? default_settings.n;
-
     oai_settings.prompts = settings.prompts ?? default_settings.prompts;
     oai_settings.prompt_order = settings.prompt_order ?? default_settings.prompt_order;
 
@@ -3578,6 +3621,9 @@ function loadOpenAISettings(data, settings) {
     $('#oai_max_context_unlocked').prop('checked', oai_settings.max_context_unlocked);
     $('#custom_prompt_post_processing').val(oai_settings.custom_prompt_post_processing);
     $(`#custom_prompt_post_processing option[value="${oai_settings.custom_prompt_post_processing}"]`).prop('selected', true);
+
+    // Initialize CometAPI
+    await initCometAPI();
 }
 
 function setNamesBehaviorControls() {
@@ -4589,6 +4635,11 @@ async function onModelChange() {
         oai_settings.xai_model = value;
     }
 
+    if ($(this).is('#cometapi_model')) {
+        console.log('CometAPI model changed to', value);
+        oai_settings.cometapi_model = value;
+    }
+
     if ([chat_completion_sources.MAKERSUITE, chat_completion_sources.VERTEXAI].includes(oai_settings.chat_completion_source)) {
         if (oai_settings.max_context_unlocked) {
             $('#openai_max_context').attr('max', max_2mil);
@@ -4675,7 +4726,7 @@ async function onModelChange() {
     if (oai_settings.chat_completion_source === chat_completion_sources.MISTRALAI) {
         const maxContext = getMistralMaxContext(oai_settings.mistralai_model, oai_settings.max_context_unlocked);
         $('#openai_max_context').attr('max', maxContext);
-        oai_settings.openai_max_context = Math.min(oai_settings.openai_max_context, Number($('#openai_max_context').attr('max')));
+        oai_settings.openai_max_context = Math.min(Number($('#openai_max_context').attr('max')), oai_settings.openai_max_context);
         $('#openai_max_context').val(oai_settings.openai_max_context).trigger('input');
         oai_settings.temp_openai = Math.min(claude_max_temp, oai_settings.temp_openai);
         $('#temp_openai').attr('max', claude_max_temp).val(oai_settings.temp_openai).trigger('input');
@@ -4732,7 +4783,7 @@ async function onModelChange() {
         $('#temp_openai').attr('max', oai_max_temp).val(oai_settings.temp_openai).trigger('input');
     }
 
-    if (oai_settings.chat_completion_source == chat_completion_sources.GROQ) {
+    if (oai_settings.chat_completion_source === chat_completion_sources.GROQ) {
         const maxContext = getGroqMaxContext(oai_settings.groq_model, oai_settings.max_context_unlocked);
         $('#openai_max_context').attr('max', maxContext);
         oai_settings.openai_max_context = Math.min(Number($('#openai_max_context').attr('max')), oai_settings.openai_max_context);
@@ -4741,7 +4792,7 @@ async function onModelChange() {
         $('#temp_openai').attr('max', oai_max_temp).val(oai_settings.temp_openai).trigger('input');
     }
 
-    if (oai_settings.chat_completion_source == chat_completion_sources.AI21) {
+    if (oai_settings.chat_completion_source === chat_completion_sources.AI21) {
         if (oai_settings.max_context_unlocked) {
             $('#openai_max_context').attr('max', unlocked_max);
         } else if (oai_settings.ai21_model.startsWith('jamba-')) {
@@ -4753,7 +4804,7 @@ async function onModelChange() {
         $('#temp_openai').attr('max', oai_max_temp).val(oai_settings.temp_openai).trigger('input');
     }
 
-    if (oai_settings.chat_completion_source == chat_completion_sources.CUSTOM) {
+    if (oai_settings.chat_completion_source === chat_completion_sources.CUSTOM) {
         $('#openai_max_context').attr('max', unlocked_max);
         oai_settings.openai_max_context = Math.min(Number($('#openai_max_context').attr('max')), oai_settings.openai_max_context);
         $('#openai_max_context').val(oai_settings.openai_max_context).trigger('input');
@@ -4808,17 +4859,8 @@ async function onModelChange() {
         $('#temp_openai').attr('max', oai_max_temp).val(oai_settings.temp_openai).trigger('input');
     }
 
-    if (oai_settings.chat_completion_source === chat_completion_sources.DEEPSEEK) {
-        if (oai_settings.max_context_unlocked) {
-            $('#openai_max_context').attr('max', unlocked_max);
-        } else if (['deepseek-reasoner', 'deepseek-chat'].includes(oai_settings.deepseek_model)) {
-            $('#openai_max_context').attr('max', max_64k);
-        } else if (oai_settings.deepseek_model == 'deepseek-coder') {
-            $('#openai_max_context').attr('max', max_16k);
-        } else {
-            $('#openai_max_context').attr('max', max_64k);
-        }
-
+    if (oai_settings.chat_completion_source === chat_completion_sources.COMETAPI) {
+        $('#openai_max_context').attr('max', unlocked_max);
         oai_settings.openai_max_context = Math.min(Number($('#openai_max_context').attr('max')), oai_settings.openai_max_context);
         $('#openai_max_context').val(oai_settings.openai_max_context).trigger('input');
         $('#temp_openai').attr('max', oai_max_temp).val(oai_settings.temp_openai).trigger('input');
@@ -5120,6 +5162,50 @@ async function onConnectButtonClick(e) {
         }
     }
 
+    if (oai_settings.chat_completion_source === chat_completion_sources.COMETAPI) {
+        // Get API key from input field like other APIs
+        const api_key_cometapi = String($('#cometapi_api_key').val()).trim();
+
+        if (api_key_cometapi.length) {
+            console.log('DEBUG: Connect button - CometAPI API key length:', api_key_cometapi.length);
+
+            // 在保存到 secret_state（会清空输入框）之前，立即刷新模型列表
+            // 这样能确保使用完整的 API key
+            try {
+                console.log('DEBUG: Connect button - Refreshing models with full API key before saving to secret_state');
+                const response = await fetch('/api/cometapi/models', {
+                    method: 'GET',
+                    headers: Object.assign({}, getRequestHeaders(), {
+                        'Authorization': `Bearer ${api_key_cometapi}`,
+                    }),
+                });
+
+                if (response.ok) {
+                    const models = await response.json();
+                    console.log('DEBUG: Connect button - Successfully loaded', models.length, 'models');
+                    if (Array.isArray(models) && models.length > 0) {
+                        model_list = models;
+                        saveModelList(models);
+                    }
+                } else {
+                    console.warn('DEBUG: Connect button - Models request failed:', response.status);
+                }
+            } catch (error) {
+                console.warn('DEBUG: Connect button - Error fetching models:', error);
+            }
+
+            // Save to secret state like other APIs
+            const currentValue = $('#cometapi_api_key').val();
+            await writeSecret(SECRET_KEYS.COMETAPI, api_key_cometapi);
+            $('#cometapi_api_key').val(currentValue); // Restore the input value
+        }
+
+        if (!api_key_cometapi && !secret_state[SECRET_KEYS.COMETAPI]) {
+            console.log('No secret key saved for CometAPI');
+            return;
+        }
+    }
+
     startStatusLoading();
     saveSettingsDebounced();
     await getStatusOpen();
@@ -5184,6 +5270,13 @@ function toggleChatCompletionForms() {
     else if (oai_settings.chat_completion_source == chat_completion_sources.POLLINATIONS) {
         $('#model_pollinations_select').trigger('change');
     }
+    else if (oai_settings.chat_completion_source == chat_completion_sources.COMETAPI) {
+        $('#cometapi_model').trigger('change');
+        // Auto-refresh models if API key is available
+        if (secret_state[SECRET_KEYS.COMETAPI]) {
+            refreshCometAPIModels();
+        }
+    }
     $('[data-source]').each(function () {
         const validSources = $(this).data('source').split(',');
         $(this).toggle(validSources.includes(oai_settings.chat_completion_source));
@@ -5238,7 +5331,7 @@ async function onCustomizeParametersClick() {
     template.find('#custom_include_headers').val(oai_settings.custom_include_headers).on('input', function () {
         oai_settings.custom_include_headers = String($(this).val());
         saveSettingsDebounced();
-    });
+       });
 
     await callGenericPopup(template, POPUP_TYPE.TEXT, '', { wide: true, large: true });
 }
@@ -5323,6 +5416,8 @@ export function isImageInliningSupported() {
             return visionSupportedModels.some(model => oai_settings.aimlapi_model.includes(model));
         case chat_completion_sources.POLLINATIONS:
             return (Array.isArray(model_list) && model_list.find(m => m.id === oai_settings.pollinations_model)?.vision);
+        case chat_completion_sources.COMETAPI:
+            return true;
         default:
             return false;
     }
@@ -6112,6 +6207,7 @@ export function initOpenAI() {
     $('#model_custom_select').on('change', onModelChange);
     $('#model_xai_select').on('change', onModelChange);
     $('#model_pollinations_select').on('change', onModelChange);
+    $('#cometapi_model').on('change', onModelChange);
     $('#settings_preset_openai').on('change', onSettingsPresetChange);
     $('#new_oai_preset').on('click', onNewPresetClick);
     $('#delete_oai_preset').on('click', onDeletePresetClick);
@@ -6128,4 +6224,123 @@ export function initOpenAI() {
     $('#openai_proxy_password_show').on('click', onProxyPasswordShowClick);
     $('#customize_additional_parameters').on('click', onCustomizeParametersClick);
     $('#openai_proxy_preset').on('change', onProxyPresetChange);
+
+
+    // CometAPI event bindings
+    $('#cometapi_refresh_models').on('click', function() {
+        console.log('DEBUG: Manual CometAPI refresh button clicked');
+        refreshCometAPIModels();
+    });
+
+    // CometAPI is automatically connected when page initialization (as long as there is a key and the current source is cometapi)
+    setTimeout(() => {
+        if (
+            oai_settings.chat_completion_source === chat_completion_sources.COMETAPI &&
+            secret_state[SECRET_KEYS.COMETAPI] &&
+            main_api === 'openai'
+        ) {
+            // DEBUG: Auto-connect to CometAPI on page initialization if API key is present and source is cometapi
+            // console.log('DEBUG: Auto-connect to CometAPI on page initialization...');
+            reconnectOpenAi();
+        }
+    }, 500);
+}
+
+
+async function initCometAPI() {
+    // console.log('DEBUG: initCometAPI called');
+
+    // Only bind event handlers, no special settings
+    $('#cometapi_api_key').on('input', function() {
+        // Just store in secret_state like other APIs, no special cometapi_settings
+        // console.log('DEBUG: CometAPI API key input changed');
+    });
+
+    $('#cometapi_model').on('change', function() {
+        oai_settings.cometapi_model = String($(this).val() || '');
+        saveSettingsDebounced();
+        // console.log('DEBUG: CometAPI model changed to:', oai_settings.cometapi_model);
+    });
+
+    // Auto-connect logic like other APIs
+    if (secret_state[SECRET_KEYS.COMETAPI] &&
+        oai_settings.chat_completion_source === chat_completion_sources.COMETAPI &&
+        main_api === 'openai') {
+        // console.log('DEBUG: CometAPI has secret_state credentials and is selected, triggering auto-connect...');
+        setTimeout(() => {
+            // console.log('DEBUG: Executing reconnectOpenAi for CometAPI...');
+            reconnectOpenAi();
+        }, 500);
+    } else {
+        // console.log('DEBUG: CometAPI auto-connect conditions NOT met');
+    }
+}async function refreshCometAPIModels() {
+    console.log('DEBUG: refreshCometAPIModels called');
+
+    // METHOD: Imitate the logic of the Connect button to obtain the complete API key.
+    let apiKey = '';
+
+    // Step 1: Try to get from input field (like Connect button does)
+    apiKey = String($('#cometapi_api_key').val()).trim();
+    // console.log('DEBUG: Method 1 - API key from input field, length:', apiKey.length);
+
+
+    if (!apiKey) {
+        // toastr.error('Please enter your CometAPI key first');
+        // console.error('DEBUG: No CometAPI API key provided, aborting refresh.');
+        return;
+    }
+
+    const refreshButton = $('#cometapi_refresh_models');
+    const originalHtml = refreshButton.html();
+
+    try {
+        // Show loading state
+        refreshButton.html('<i class="fa-solid fa-spinner fa-spin"></i> Loading...');
+        refreshButton.prop('disabled', true);
+
+        console.log('DEBUG: Making CometAPI models request with API key length:', apiKey.length);
+
+        const response = await fetch('/api/cometapi/models', {
+            method: 'GET',
+            headers: Object.assign({}, getRequestHeaders(), {
+                'Authorization': `Bearer ${apiKey}`,
+            }),
+        });
+
+        console.log('DEBUG: CometAPI models response status:', response.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('DEBUG: CometAPI models request failed:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const models = await response.json();
+        console.log('DEBUG: CometAPI models received:', models.length, 'models');
+
+        if (Array.isArray(models) && models.length > 0) {
+            model_list = models;
+            saveModelList(models);
+        } else {
+            model_list = [];
+            // console.log('DEBUG: Empty or invalid models response');
+            toastr.warning('No CometAPI models available. All models may have been filtered out.');
+        }
+    } catch (error) {
+        console.error('DEBUG: Error fetching CometAPI models:', error);
+        toastr.error(`Failed to fetch models: ${error.message}`);
+    } finally {
+        // Restore button state
+        refreshButton.html(originalHtml);
+        refreshButton.prop('disabled', false);
+    }
+}
+
+function getCometAPIModelName() {
+    return oai_settings.cometapi_model || 'No model selected';
+}
+
+function isCometAPIConfigured() {
+    return !!(secret_state[SECRET_KEYS.COMETAPI] && oai_settings.cometapi_model);
 }
