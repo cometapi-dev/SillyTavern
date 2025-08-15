@@ -54,6 +54,7 @@ export const SECRET_KEYS = {
     SERPER: 'api_key_serper',
     AIMLAPI: 'api_key_aimlapi',
     XAI: 'api_key_xai',
+    COMETAPI: 'cometapi_api_key',
     VERTEXAI_SERVICE_ACCOUNT: 'vertexai_service_account_json',
 };
 
@@ -191,6 +192,17 @@ export class SecretManager {
 
         if (!Array.isArray(secrets[key])) {
             secrets[key] = [];
+        }
+
+        // Check if this exact value already exists
+        const existingSecret = secrets[key].find(secret => secret.value === value);
+        if (existingSecret) {
+            // Activate the existing secret and deactivate others
+            this._deactivateAllSecrets(secrets[key]);
+            existingSecret.active = true;
+            existingSecret.label = label; // Update the label
+            this._writeSecretsFile(secrets);
+            return existingSecret.id;
         }
 
         this._deactivateAllSecrets(secrets[key]);
