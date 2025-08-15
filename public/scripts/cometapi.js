@@ -60,7 +60,7 @@ export function initCometAPI() {
 
 // Refresh available models list
 async function refreshCometAPIModels() {
-    // 直接从输入框获取 API key，不要从 secret_state 获取因为那里的已经被截断了
+    // Get the API key directly from the input box, do not get it from secret_state because it has been truncated there.
     const apiKey = String($('#cometapi_api_key').val() || '').trim();
 
     console.log('DEBUG: CometAPI refresh - API key from input field, length:', apiKey.length);

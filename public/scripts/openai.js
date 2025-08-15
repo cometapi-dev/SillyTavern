@@ -5169,8 +5169,7 @@ async function onConnectButtonClick(e) {
         if (api_key_cometapi.length) {
             console.log('DEBUG: Connect button - CometAPI API key length:', api_key_cometapi.length);
 
-            // 在保存到 secret_state（会清空输入框）之前，立即刷新模型列表
-            // 这样能确保使用完整的 API key
+            // Immediately refresh the model list before saving to secret_state (which will clear the input box).
             try {
                 console.log('DEBUG: Connect button - Refreshing models with full API key before saving to secret_state');
                 const response = await fetch('/api/cometapi/models', {
