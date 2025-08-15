@@ -5329,8 +5329,7 @@ async function onCustomizeParametersClick() {
 
     template.find('#custom_include_headers').val(oai_settings.custom_include_headers).on('input', function () {
         oai_settings.custom_include_headers = String($(this).val());
-        saveSettingsDebounced();
-       });
+        saveSettingsDebounced();});
 
     await callGenericPopup(template, POPUP_TYPE.TEXT, '', { wide: true, large: true });
 }

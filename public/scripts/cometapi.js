@@ -14,14 +14,6 @@ function getRequestHeaders() {
     };
 }
 
-// Load settings - simplified like other APIs
-// export function loadCometAPISettings() {
-//     // console.log('DEBUG: loadCometAPISettings called - Using standard pattern like other APIs');
-//     // No special loading needed - using secret_state and oai_settings like others
-// }
-
-
-
 // Initialize CometAPI module
 export function initCometAPI() {
 
@@ -36,7 +28,7 @@ export function initCometAPI() {
 
             // Verify what was written
             if (secret_state[SECRET_KEYS.COMETAPI] && Array.isArray(secret_state[SECRET_KEYS.COMETAPI]) && secret_state[SECRET_KEYS.COMETAPI].length > 0) {
-                const verifyKey = String(secret_state[SECRET_KEYS.COMETAPI][0].value || '');
+                // const verifyKey = String(secret_state[SECRET_KEYS.COMETAPI][0].value || '');
                 // console.log('DEBUG: Verified API key in secret_state, length:', verifyKey.length);
                 // console.log('DEBUG: Verified API key value:', verifyKey);
             }
