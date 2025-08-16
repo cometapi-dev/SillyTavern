@@ -124,6 +124,7 @@ const max_4k = 4095;
 const max_8k = 8191;
 const max_16k = 16383;
 const max_32k = 32767;
+const max_64k = 65535;
 const max_128k = 128 * 1000;
 const max_200k = 200 * 1000;
 const max_256k = 256 * 1000;
@@ -135,6 +136,7 @@ const unlocked_max = max_2mil;
 const oai_max_temp = 2.0;
 const claude_max_temp = 1.0;
 const openrouter_website_model = 'OR_Website';
+const cometapi_website_model = 'CometAPI_Website';
 const openai_max_stop_strings = 4;
 
 const textCompletionModels = [
@@ -373,7 +375,7 @@ const default_settings = {
     aimlapi_model: 'gpt-4o-mini-2024-07-18',
     xai_model: 'grok-3-beta',
     pollinations_model: 'openai',
-    cometapi_model: '',
+    cometapi_model: cometapi_website_model,
     custom_model: '',
     custom_url: '',
     custom_include_body: '',
@@ -418,10 +420,6 @@ const default_settings = {
     extensions: {},
 };
 
-// CometAPI settings object - REMOVED! Use secret_state like other APIs
-// const cometapi_settings = (() => {
-//     ... removed completely
-// })();
 
 const oai_settings = {
     preset_settings_openai: 'Default',
@@ -466,7 +464,7 @@ const oai_settings = {
     aimlapi_model: 'gpt-4-turbo',
     xai_model: 'grok-3-beta',
     pollinations_model: 'openai',
-    cometapi_model: '',
+    cometapi_model: cometapi_website_model,
     custom_model: '',
     custom_url: '',
     custom_include_body: '',
@@ -1630,7 +1628,7 @@ export function getChatCompletionModel(source = null) {
         case chat_completion_sources.POLLINATIONS:
             return oai_settings.pollinations_model;
         case chat_completion_sources.COMETAPI:
-            return oai_settings.cometapi_model;
+            return oai_settings.cometapi_model !== cometapi_website_model ? oai_settings.cometapi_model : null;
         default:
             console.error(`Unknown chat completion source: ${activeSource}`);
             return '';
@@ -2448,8 +2446,6 @@ export function getStreamingReply(data, state, { chatCompletionSource = null, ov
         }
         return data.choices?.[0]?.delta?.content ?? data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '';
     } else if (chat_completion_source === chat_completion_sources.COMETAPI) {
-        return data.choices?.[0]?.delta?.content ?? data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '';
-    } else {
         return data.choices?.[0]?.delta?.content ?? data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '';
     }
 }
@@ -3623,7 +3619,7 @@ async function loadOpenAISettings(data, settings) {
     $(`#custom_prompt_post_processing option[value="${oai_settings.custom_prompt_post_processing}"]`).prop('selected', true);
 
     // Initialize CometAPI
-    await initCometAPI();
+    initCometAPI();
 }
 
 function setNamesBehaviorControls() {
@@ -4674,7 +4670,7 @@ async function onModelChange() {
                 $('#openai_max_context').attr('max', max_8k);
             }
         }
-        oai_settings.openai_max_context = Math.min(Number($('#openai_max_context').attr('max')), oai_settings.openai_max_context);
+        oai_settings.openai_max_context = Math.min(oai_settings.openai_max_context, Number($('#openai_max_context').attr('max')));
         $('#openai_max_context').val(oai_settings.openai_max_context).trigger('input');
 
         if (value && (value.includes('claude') || value.includes('palm-2'))) {
@@ -4852,6 +4848,22 @@ async function onModelChange() {
             $('#openai_max_context').attr('max', unlocked_max);
         } else {
             $('#openai_max_context').attr('max', max_128k);
+        }
+
+        oai_settings.openai_max_context = Math.min(Number($('#openai_max_context').attr('max')), oai_settings.openai_max_context);
+        $('#openai_max_context').val(oai_settings.openai_max_context).trigger('input');
+        $('#temp_openai').attr('max', oai_max_temp).val(oai_settings.temp_openai).trigger('input');
+    }
+
+    if (oai_settings.chat_completion_source === chat_completion_sources.DEEPSEEK) {
+        if (oai_settings.max_context_unlocked) {
+            $('#openai_max_context').attr('max', unlocked_max);
+        } else if (['deepseek-reasoner', 'deepseek-chat'].includes(oai_settings.deepseek_model)) {
+            $('#openai_max_context').attr('max', max_64k);
+        } else if (oai_settings.deepseek_model == 'deepseek-coder') {
+            $('#openai_max_context').attr('max', max_16k);
+        } else {
+            $('#openai_max_context').attr('max', max_64k);
         }
 
         oai_settings.openai_max_context = Math.min(Number($('#openai_max_context').attr('max')), oai_settings.openai_max_context);
@@ -5167,11 +5179,9 @@ async function onConnectButtonClick(e) {
         const api_key_cometapi = String($('#cometapi_api_key').val()).trim();
 
         if (api_key_cometapi.length) {
-            console.log('DEBUG: Connect button - CometAPI API key length:', api_key_cometapi.length);
 
             // Immediately refresh the model list before saving to secret_state (which will clear the input box).
             try {
-                console.log('DEBUG: Connect button - Refreshing models with full API key before saving to secret_state');
                 const response = await fetch('/api/cometapi/models', {
                     method: 'GET',
                     headers: Object.assign({}, getRequestHeaders(), {
