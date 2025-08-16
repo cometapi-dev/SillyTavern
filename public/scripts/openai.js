@@ -5182,25 +5182,56 @@ async function onConnectButtonClick(e) {
 
             // Immediately refresh the model list before saving to secret_state (which will clear the input box).
             try {
-                const response = await fetch('/api/cometapi/models', {
+                const originalResponse = await fetch(apiUrl + '/models', {
                     method: 'GET',
-                    headers: Object.assign({}, getRequestHeaders(), {
-                        'Authorization': `Bearer ${api_key_cometapi}`,
-                    }),
+                    headers: {
+                        'Authorization': 'Bearer ' + apiKey,
+                        'Accept': 'application/json',
+                    },
                 });
 
-                if (response.ok) {
-                    const models = await response.json();
-                    console.log('DEBUG: Connect button - Successfully loaded', models.length, 'models');
-                    if (Array.isArray(models) && models.length > 0) {
-                        model_list = models;
-                        saveModelList(models);
-                    }
-                } else {
-                    console.warn('DEBUG: Connect button - Models request failed:', response.status);
+                if (!originalResponse.ok) {
+                    throw new Error(`HTTP ${originalResponse.status}`);
                 }
+
+                /** @type {any} */
+                const originalData = await originalResponse.json();
+                const models = originalData?.data || originalData?.models || originalData || [];
+                // Apply the same filtering logic as in cometapi.js
+                const filteredModels = models.filter(model => {
+                    const modelId = model.id.toLowerCase();
+
+                    // Filter out image generation models
+                    const imageGenPatterns = [
+                        'dall-e', 'dalle', 'midjourney', 'mj_', 'stable-diffusion', 'sd-',
+                        'flux-', 'playground-v', 'ideogram', 'recraft-', 'black-forest-labs',
+                        '/recraft-v3', 'recraftv3', 'stability-ai/', 'sdxl',
+                    ];
+
+                    // Filter out video generation models
+                    const videoGenPatterns = [
+                        'runway', 'luma_', 'luma-', 'veo', 'kling_', 'minimax_video', 'hunyuan-t1',
+                    ];
+
+                    // Filter out audio/music generation models
+                    const audioGenPatterns = ['suno_', 'tts', 'whisper'];
+
+                    // Filter out utility models
+                    const utilityPatterns = ['embedding', 'search-gpts', 'files_retrieve', 'moderation'];
+
+                    const isImageModel = imageGenPatterns.some(pattern => modelId.includes(pattern));
+                    const isVideoModel = videoGenPatterns.some(pattern => modelId.includes(pattern));
+                    const isAudioModel = audioGenPatterns.some(pattern => modelId.includes(pattern));
+                    const isUtilityModel = utilityPatterns.some(pattern => modelId.includes(pattern));
+
+                    return !isImageModel && !isVideoModel && !isAudioModel && !isUtilityModel;
+                });
+
+                statusResponse.send({ data: filteredModels });
+                return;
             } catch (error) {
-                console.warn('DEBUG: Connect button - Error fetching models:', error);
+                console.error('CometAPI filtering error:', error);
+                // Fallback to original behavior
             }
 
             // Save to secret state like other APIs
@@ -5281,10 +5312,6 @@ function toggleChatCompletionForms() {
     }
     else if (oai_settings.chat_completion_source == chat_completion_sources.COMETAPI) {
         $('#cometapi_model').trigger('change');
-        // Auto-refresh models if API key is available
-        if (secret_state[SECRET_KEYS.COMETAPI]) {
-            refreshCometAPIModels();
-        }
     }
     $('[data-source]').each(function () {
         const validSources = $(this).data('source').split(',');
@@ -6276,11 +6303,8 @@ async function initCometAPI() {
         main_api === 'openai') {
         // console.log('DEBUG: CometAPI has secret_state credentials and is selected, triggering auto-connect...');
         setTimeout(() => {
-            // console.log('DEBUG: Executing reconnectOpenAi for CometAPI...');
             reconnectOpenAi();
         }, 500);
-    } else {
-        // console.log('DEBUG: CometAPI auto-connect conditions NOT met');
     }
 }async function refreshCometAPIModels() {
     console.log('DEBUG: refreshCometAPIModels called');
