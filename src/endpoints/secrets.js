@@ -194,16 +194,6 @@ export class SecretManager {
             secrets[key] = [];
         }
 
-        // Check if this exact value already exists
-        const existingSecret = secrets[key].find(secret => secret.value === value);
-        if (existingSecret) {
-            // Activate the existing secret and deactivate others
-            this._deactivateAllSecrets(secrets[key]);
-            existingSecret.active = true;
-            existingSecret.label = label; // Update the label
-            this._writeSecretsFile(secrets);
-            return existingSecret.id;
-        }
 
         this._deactivateAllSecrets(secrets[key]);
 
