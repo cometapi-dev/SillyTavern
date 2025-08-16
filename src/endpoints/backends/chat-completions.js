@@ -51,6 +51,7 @@ import {
 import { getVertexAIAuth, getProjectIdFromServiceAccount } from '../google.js';
 
 const API_OPENAI = 'https://api.openai.com/v1';
+const API_COMETAPI = 'https://api.cometapi.com/v1';
 const API_CLAUDE = 'https://api.anthropic.com/v1';
 const API_MISTRAL = 'https://api.mistral.ai/v1';
 const API_COHERE_V1 = 'https://api.cohere.ai/v1';
@@ -1225,7 +1226,7 @@ router.post('/status', async function (request, statusResponse) {
         apiKey = readSecret(request.user.directories, SECRET_KEYS.GROQ);
         headers = {};
     } else if (request.body.chat_completion_source === CHAT_COMPLETION_SOURCES.COMETAPI) {
-        apiUrl = 'https://api.cometapi.com/v1';
+        apiUrl = API_COMETAPI;
         apiKey = readSecret(request.user.directories, SECRET_KEYS.COMETAPI);
         headers = {};
     } else if (request.body.chat_completion_source === CHAT_COMPLETION_SOURCES.MAKERSUITE) {
