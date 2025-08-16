@@ -5171,56 +5171,26 @@ async function onConnectButtonClick(e) {
 
             // Immediately refresh the model list before saving to secret_state (which will clear the input box).
             try {
-                const originalResponse = await fetch(apiUrl + '/models', {
+                const response = await fetch('/api/cometapi/models', {
                     method: 'GET',
-                    headers: {
-                        'Authorization': 'Bearer ' + apiKey,
+                    headers: Object.assign({}, getRequestHeaders(), {
+                        'Authorization': `Bearer ${api_key_cometapi}`,
                         'Accept': 'application/json',
-                    },
+                    }),
                 });
 
-                if (!originalResponse.ok) {
-                    throw new Error(`HTTP ${originalResponse.status}`);
+                if (response.ok) {
+                    const models = await response.json();
+                    console.log('DEBUG: Connect button - Successfully loaded', models.length, 'models');
+                    if (Array.isArray(models) && models.length > 0) {
+                        model_list = models;
+                        saveModelList(models);
+                    }
+                } else {
+                    console.warn('DEBUG: Connect button - Models request failed:', response.status);
                 }
-
-                /** @type {any} */
-                const originalData = await originalResponse.json();
-                const models = originalData?.data || originalData?.models || originalData || [];
-                // Apply the same filtering logic as in cometapi.js
-                const filteredModels = models.filter(model => {
-                    const modelId = model.id.toLowerCase();
-
-                    // Filter out image generation models
-                    const imageGenPatterns = [
-                        'dall-e', 'dalle', 'midjourney', 'mj_', 'stable-diffusion', 'sd-',
-                        'flux-', 'playground-v', 'ideogram', 'recraft-', 'black-forest-labs',
-                        '/recraft-v3', 'recraftv3', 'stability-ai/', 'sdxl',
-                    ];
-
-                    // Filter out video generation models
-                    const videoGenPatterns = [
-                        'runway', 'luma_', 'luma-', 'veo', 'kling_', 'minimax_video', 'hunyuan-t1',
-                    ];
-
-                    // Filter out audio/music generation models
-                    const audioGenPatterns = ['suno_', 'tts', 'whisper'];
-
-                    // Filter out utility models
-                    const utilityPatterns = ['embedding', 'search-gpts', 'files_retrieve', 'moderation'];
-
-                    const isImageModel = imageGenPatterns.some(pattern => modelId.includes(pattern));
-                    const isVideoModel = videoGenPatterns.some(pattern => modelId.includes(pattern));
-                    const isAudioModel = audioGenPatterns.some(pattern => modelId.includes(pattern));
-                    const isUtilityModel = utilityPatterns.some(pattern => modelId.includes(pattern));
-
-                    return !isImageModel && !isVideoModel && !isAudioModel && !isUtilityModel;
-                });
-
-                statusResponse.send({ data: filteredModels });
-                return;
             } catch (error) {
-                console.error('CometAPI filtering error:', error);
-                // Fallback to original behavior
+                console.warn('DEBUG: Connect button - Error fetching models:', error);
             }
 
             // Save to secret state like other APIs
