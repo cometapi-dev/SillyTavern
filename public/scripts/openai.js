@@ -88,7 +88,6 @@ export {
     IdentifierNotFoundError,
     Message,
     MessageCollection,
-    initCometAPI,
     getCometAPIModelName,
     isCometAPIConfigured,
 };
@@ -3617,9 +3616,6 @@ async function loadOpenAISettings(data, settings) {
     $('#oai_max_context_unlocked').prop('checked', oai_settings.max_context_unlocked);
     $('#custom_prompt_post_processing').val(oai_settings.custom_prompt_post_processing);
     $(`#custom_prompt_post_processing option[value="${oai_settings.custom_prompt_post_processing}"]`).prop('selected', true);
-
-    // Initialize CometAPI
-    initCometAPI();
 }
 
 function setNamesBehaviorControls() {
@@ -6261,11 +6257,6 @@ export function initOpenAI() {
     $('#openai_proxy_preset').on('change', onProxyPresetChange);
 
 
-    // CometAPI event bindings
-    $('#cometapi_refresh_models').on('click', function() {
-        console.log('DEBUG: Manual CometAPI refresh button clicked');
-        refreshCometAPIModels();
-    });
 
     // CometAPI is automatically connected when page initialization (as long as there is a key and the current source is cometapi)
     setTimeout(() => {
@@ -6281,93 +6272,6 @@ export function initOpenAI() {
     }, 500);
 }
 
-
-async function initCometAPI() {
-    // console.log('DEBUG: initCometAPI called');
-
-    // Only bind event handlers, no special settings
-    $('#cometapi_api_key').on('input', function() {
-        // Just store in secret_state like other APIs, no special cometapi_settings
-        // console.log('DEBUG: CometAPI API key input changed');
-    });
-
-    $('#cometapi_model').on('change', function() {
-        oai_settings.cometapi_model = String($(this).val() || '');
-        saveSettingsDebounced();
-        // console.log('DEBUG: CometAPI model changed to:', oai_settings.cometapi_model);
-    });
-
-    // Auto-connect logic like other APIs
-    if (secret_state[SECRET_KEYS.COMETAPI] &&
-        oai_settings.chat_completion_source === chat_completion_sources.COMETAPI &&
-        main_api === 'openai') {
-        // console.log('DEBUG: CometAPI has secret_state credentials and is selected, triggering auto-connect...');
-        setTimeout(() => {
-            reconnectOpenAi();
-        }, 500);
-    }
-}async function refreshCometAPIModels() {
-    console.log('DEBUG: refreshCometAPIModels called');
-
-    // METHOD: Imitate the logic of the Connect button to obtain the complete API key.
-    let apiKey = '';
-
-    // Step 1: Try to get from input field (like Connect button does)
-    apiKey = String($('#cometapi_api_key').val()).trim();
-    // console.log('DEBUG: Method 1 - API key from input field, length:', apiKey.length);
-
-
-    if (!apiKey) {
-        // toastr.error('Please enter your CometAPI key first');
-        // console.error('DEBUG: No CometAPI API key provided, aborting refresh.');
-        return;
-    }
-
-    const refreshButton = $('#cometapi_refresh_models');
-    const originalHtml = refreshButton.html();
-
-    try {
-        // Show loading state
-        refreshButton.html('<i class="fa-solid fa-spinner fa-spin"></i> Loading...');
-        refreshButton.prop('disabled', true);
-
-        console.log('DEBUG: Making CometAPI models request with API key length:', apiKey.length);
-
-        const response = await fetch('/api/cometapi/models', {
-            method: 'GET',
-            headers: Object.assign({}, getRequestHeaders(), {
-                'Authorization': `Bearer ${apiKey}`,
-            }),
-        });
-
-        console.log('DEBUG: CometAPI models response status:', response.status);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('DEBUG: CometAPI models request failed:', response.status, errorText);
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const models = await response.json();
-        console.log('DEBUG: CometAPI models received:', models.length, 'models');
-
-        if (Array.isArray(models) && models.length > 0) {
-            model_list = models;
-            saveModelList(models);
-        } else {
-            model_list = [];
-            // console.log('DEBUG: Empty or invalid models response');
-            toastr.warning('No CometAPI models available. All models may have been filtered out.');
-        }
-    } catch (error) {
-        console.error('DEBUG: Error fetching CometAPI models:', error);
-        toastr.error(`Failed to fetch models: ${error.message}`);
-    } finally {
-        // Restore button state
-        refreshButton.html(originalHtml);
-        refreshButton.prop('disabled', false);
-    }
-}
 
 function getCometAPIModelName() {
     return oai_settings.cometapi_model || 'No model selected';
