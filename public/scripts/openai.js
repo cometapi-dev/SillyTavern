@@ -88,6 +88,8 @@ export {
     IdentifierNotFoundError,
     Message,
     MessageCollection,
+    // getCometAPIModelName,
+    // isCometAPIConfigured,
 };
 
 let openai_messages_count = 0;
@@ -134,6 +136,7 @@ const unlocked_max = max_2mil;
 const oai_max_temp = 2.0;
 const claude_max_temp = 1.0;
 const openrouter_website_model = 'OR_Website';
+const cometapi_website_model = 'CometAPI_Website';
 const openai_max_stop_strings = 4;
 
 const textCompletionModels = [
@@ -184,6 +187,7 @@ export const chat_completion_sources = {
     AIMLAPI: 'aimlapi',
     XAI: 'xai',
     POLLINATIONS: 'pollinations',
+    COMETAPI: 'cometapi',
     MOONSHOT: 'moonshot',
     FIREWORKS: 'fireworks',
 };
@@ -371,6 +375,7 @@ const default_settings = {
     aimlapi_model: 'gpt-4o-mini-2024-07-18',
     xai_model: 'grok-3-beta',
     pollinations_model: 'openai',
+    cometapi_model: cometapi_website_model,
     moonshot_model: 'kimi-latest',
     custom_model: '',
     custom_url: '',
@@ -458,6 +463,7 @@ const oai_settings = {
     aimlapi_model: 'gpt-4-turbo',
     xai_model: 'grok-3-beta',
     pollinations_model: 'openai',
+    cometapi_model: cometapi_website_model,
     moonshot_model: 'kimi-latest',
     fireworks_model: 'accounts/fireworks/models/kimi-k2-instruct',
     custom_model: '',
@@ -1620,6 +1626,8 @@ export function getChatCompletionModel(source = null) {
             return oai_settings.xai_model;
         case chat_completion_sources.POLLINATIONS:
             return oai_settings.pollinations_model;
+        case chat_completion_sources.COMETAPI:
+            return oai_settings.cometapi_model !== cometapi_website_model ? oai_settings.cometapi_model : null;
         case chat_completion_sources.MOONSHOT:
             return oai_settings.moonshot_model;
         case chat_completion_sources.FIREWORKS:
@@ -1896,6 +1904,27 @@ function saveModelList(data) {
         }
 
         $('#model_fireworks_select').val(oai_settings.fireworks_model).trigger('change');
+    }
+
+    if (oai_settings.chat_completion_source === chat_completion_sources.COMETAPI) {
+        $('#cometapi_model').empty();
+        $('#cometapi_model').append('<option value="">Select Model</option>');
+
+        model_list.forEach((model) => {
+            $('#cometapi_model').append(
+                $('<option>', {
+                    value: model.id,
+                    text: model.id,
+                }));
+        });
+
+        const selectedModel = model_list.find(model => model.id === oai_settings.cometapi_model);
+        if (model_list.length > 0 && (!selectedModel || !oai_settings.cometapi_model)) {
+            oai_settings.cometapi_model = model_list[0].id;
+            saveSettingsDebounced();
+        }
+
+        $('#cometapi_model').val(oai_settings.cometapi_model).trigger('change');
     }
 }
 
@@ -3404,6 +3433,7 @@ function loadOpenAISettings(data, settings) {
     oai_settings.aimlapi_model = settings.aimlapi_model ?? default_settings.aimlapi_model;
     oai_settings.xai_model = settings.xai_model ?? default_settings.xai_model;
     oai_settings.pollinations_model = settings.pollinations_model ?? default_settings.pollinations_model;
+    oai_settings.cometapi_model = settings.cometapi_model ?? default_settings.cometapi_model;
     oai_settings.moonshot_model = settings.moonshot_model ?? default_settings.moonshot_model;
     oai_settings.custom_model = settings.custom_model ?? default_settings.custom_model;
     oai_settings.custom_url = settings.custom_url ?? default_settings.custom_url;
@@ -4686,6 +4716,11 @@ async function onModelChange() {
         oai_settings.fireworks_model = value;
     }
 
+    if ($(this).is('#cometapi_model')) {
+        console.log('CometAPI model changed to', value);
+        oai_settings.cometapi_model = value;
+    }
+
     if ([chat_completion_sources.MAKERSUITE, chat_completion_sources.VERTEXAI].includes(oai_settings.chat_completion_source)) {
         if (oai_settings.max_context_unlocked) {
             $('#openai_max_context').attr('max', max_2mil);
@@ -4892,6 +4927,13 @@ async function onModelChange() {
             $('#openai_max_context').attr('max', max_64k);
         }
 
+        oai_settings.openai_max_context = Math.min(Number($('#openai_max_context').attr('max')), oai_settings.openai_max_context);
+        $('#openai_max_context').val(oai_settings.openai_max_context).trigger('input');
+        $('#temp_openai').attr('max', oai_max_temp).val(oai_settings.temp_openai).trigger('input');
+    }
+
+    if (oai_settings.chat_completion_source === chat_completion_sources.COMETAPI) {
+        $('#openai_max_context').attr('max', unlocked_max);
         oai_settings.openai_max_context = Math.min(Number($('#openai_max_context').attr('max')), oai_settings.openai_max_context);
         $('#openai_max_context').val(oai_settings.openai_max_context).trigger('input');
         $('#temp_openai').attr('max', oai_max_temp).val(oai_settings.temp_openai).trigger('input');
@@ -5225,6 +5267,24 @@ async function onConnectButtonClick(e) {
         }
     }
 
+    if (oai_settings.chat_completion_source == chat_completion_sources.COMETAPI) {
+        // Get API key from input field like other APIs
+        const api_key_cometapi = String($('#cometapi_api_key').val()).trim();
+
+        if (api_key_cometapi.length) {
+
+            // Save to secret state like other APIs
+            const currentValue = $('#cometapi_api_key').val();
+            await writeSecret(SECRET_KEYS.COMETAPI, api_key_cometapi);
+            $('#cometapi_api_key').val(currentValue); // Restore the input value
+        }
+
+        if (!api_key_cometapi && !secret_state[SECRET_KEYS.COMETAPI]) {
+            console.log('No secret key saved for CometAPI');
+            return;
+        }
+    }
+
     startStatusLoading();
     saveSettingsDebounced();
     await getStatusOpen();
@@ -5292,6 +5352,11 @@ function toggleChatCompletionForms() {
     else if (oai_settings.chat_completion_source == chat_completion_sources.FIREWORKS) {
         $('#model_fireworks_select').trigger('change');
     }
+
+    else if (oai_settings.chat_completion_source == chat_completion_sources.COMETAPI) {
+        $('#cometapi_model').trigger('change');
+    }
+
     $('[data-source]').each(function () {
         const validSources = $(this).data('source').split(',');
         $(this).toggle(validSources.includes(oai_settings.chat_completion_source));
@@ -5433,6 +5498,8 @@ export function isImageInliningSupported() {
             return visionSupportedModels.some(model => oai_settings.aimlapi_model.includes(model));
         case chat_completion_sources.POLLINATIONS:
             return (Array.isArray(model_list) && model_list.find(m => m.id === oai_settings.pollinations_model)?.vision);
+        case chat_completion_sources.COMETAPI:
+            return true;
         case chat_completion_sources.MOONSHOT:
             return visionSupportedModels.some(model => oai_settings.moonshot_model.includes(model));
         default:
@@ -6237,6 +6304,7 @@ export function initOpenAI() {
     $('#model_custom_select').on('change', onModelChange);
     $('#model_xai_select').on('change', onModelChange);
     $('#model_pollinations_select').on('change', onModelChange);
+    $('#cometapi_model').on('change', onModelChange);
     $('#model_moonshot_select').on('change', onModelChange);
     $('#model_fireworks_select').on('change', onModelChange);
     $('#settings_preset_openai').on('change', onSettingsPresetChange);

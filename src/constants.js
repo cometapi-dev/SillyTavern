@@ -178,6 +178,7 @@ export const CHAT_COMPLETION_SOURCES = {
     AIMLAPI: 'aimlapi',
     XAI: 'xai',
     POLLINATIONS: 'pollinations',
+    COMETAPI: 'cometapi',
     MOONSHOT: 'moonshot',
     FIREWORKS: 'fireworks',
 };
