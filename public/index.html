@@ -2804,6 +2804,7 @@
                                 <option value="aimlapi">AI/ML API</option>
                                 <option value="claude">Claude</option>
                                 <option value="cohere">Cohere</option>
+                                <option value="cometapi">CometAPI</option>
                                 <option value="deepseek">DeepSeek</option>
                                 <option value="fireworks">Fireworks AI</option>
                                 <option value="groq">Groq</option>
@@ -3512,6 +3513,32 @@
                                     <option value="" data-i18n="-- Connect to the API --">-- Connect to the API --</option>
                                 </select>
                             </div>
+                        </div>
+                        <div id="cometapi_form" data-source="cometapi">
+                             <h4><a href="https://api.cometapi.com/" target="_blank" rel="noopener noreferrer" data-i18n="CometAPI API Key">CometAPI API Key</a></h4>
+                            <div>
+                                <small data-i18n="Get your API key from">
+                                    Get your API key from </small> <a target="_blank" href="https://api.cometapi.com/">CometAPI</a>.
+                            </div>
+                            <div class="flex-container">
+                                <input id="cometapi_api_key" name="cometapi_api_key" class="text_pole flex1" value="" type="text" autocomplete="off">
+                                <div title="Manage API keys" data-i18n="[title]Manage API keys" class="menu_button fa-solid fa-key fa-fw manage-api-keys" data-key="cometapi_api_key"></div>
+                            </div>
+                            <div data-for="cometapi_api_key" class="neutral_warning" data-i18n="For privacy reasons, your API key will be hidden after you click 'Connect'.">
+                                For privacy reasons, your API key will be hidden after you click 'Connect'.
+                            </div>
+                            <div>
+                                <h4 data-i18n="CometAPI Model">CometAPI Model</h4>
+                                <div class="flex-container">
+                                    <select id="cometapi_model" class="flex1">
+                                        <option value="" data-i18n="-- Enter API Key First --">-- Enter API Key First --</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <small class="marginTopBot5">
+                                <i class="fa-solid fa-lightbulb"></i>
+                                <span data-i18n="500+ AI Models Unified into CometAPI">CometAPI provides access to multiple AI models through a unified API.</span>
+                            </small>
                         </div>
                         <div id="perplexity_form" data-source="perplexity">
                             <h4 data-i18n="Perplexity API Key">Perplexity API Key</h4>
